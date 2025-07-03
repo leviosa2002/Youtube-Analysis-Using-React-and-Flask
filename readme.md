@@ -1,3 +1,4 @@
+
 # YouTube Analytics Dashboard
 
 A comprehensive full-stack YouTube analytics application built with React.js frontend and Flask backend. Analyze YouTube channels, videos, and trending content with advanced data visualizations and sentiment analysis.
@@ -79,162 +80,201 @@ source venv/bin/activate
 
 pip install -r requirements.txt
 cp .env.example .env
-Edit .env file and add your YouTube API key:
-envYOUTUBE_API_KEY=your_youtube_api_key_here
+```
+
+Edit `.env` file and add your YouTube API key:
+```
+YOUTUBE_API_KEY=your_youtube_api_key_here
 FLASK_ENV=development
 FLASK_DEBUG=True
+```
+
 Start the Flask server:
-bashpython app.py
-3. Frontend Setup
-bashcd frontend
+```bash
+python app.py
+```
+
+### 3. Frontend Setup
+```bash
+cd frontend
 npm install
 npm start
-🌐 Usage
+```
 
-Backend: http://localhost:5000
-Frontend: http://localhost:3000
+## 🌐 Usage
 
-Channel Analysis
+- **Backend**: http://localhost:5000  
+- **Frontend**: http://localhost:3000
 
-Enter channel URL: https://youtube.com/@MrBeast
-Or channel ID: UCX6OQ3DkcsbYNE6H8uQQuVA
+### Channel Analysis
+Enter channel URL:  
+`https://youtube.com/@MrBeast`  
+Or channel ID:  
+`UCX6OQ3DkcsbYNE6H8uQQuVA`
 
-Video Analysis
+### Video Analysis
+Enter video URL:  
+`https://youtube.com/watch?v=dQw4w9WgXcQ`  
+Or video ID:  
+`dQw4w9WgXcQ`
 
-Enter video URL: https://youtube.com/watch?v=dQw4w9WgXcQ
-Or video ID: dQw4w9WgXcQ
+### Trending Analysis
+- Select from 12 countries/regions
+- View top 30 trending videos
+- Sort by various metrics
 
-Trending Analysis
+## 📡 API Endpoints
 
-Select from 12 countries/regions
-View top 30 trending videos
-Sort by various metrics
-
-📡 API Endpoints
-Backend REST API
+### Backend REST API
+```
 GET  /api/health                    # Health check
-GET  /api/channel/<channel_id>      # Channel analytics
-GET  /api/video/<video_id>          # Video analytics
-GET  /api/trending                  # Trending videos (US)
-GET  /api/trending/<region_code>    # Trending videos by region
-Example API Calls
-bashcurl http://localhost:5000/api/health
+GET  /api/channel/<channel_id>     # Channel analytics
+GET  /api/video/<video_id>         # Video analytics
+GET  /api/trending                 # Trending videos (US)
+GET  /api/trending/<region_code>   # Trending videos by region
+```
+
+### Example API Calls
+```bash
+curl http://localhost:5000/api/health
 curl http://localhost:5000/api/channel/UCX6OQ3DkcsbYNE6H8uQQuVA
 curl http://localhost:5000/api/video/dQw4w9WgXcQ
 curl http://localhost:5000/api/trending/IN
-🎯 Key Features Explained
-Smart URL/ID Extraction
+```
+
+## 🎯 Key Features Explained
+
+### Smart URL/ID Extraction
 Supports various YouTube URL formats:
+- `https://youtube.com/@channelname`
+- `https://youtube.com/channel/UCxxxx`
+- `https://youtube.com/watch?v=xxxxx`
+- `https://youtu.be/xxxxx`
+- Direct IDs
 
-https://youtube.com/@channelname
-https://youtube.com/channel/UCxxxx
-https://youtube.com/watch?v=xxxxx
-https://youtu.be/xxxxx
-Direct IDs
+### Sentiment Analysis
+- Analyzes comment text for sentiment
+- Keywords-based classification
+- Visual breakdown with charts
+- Sample comments with sentiment labels
 
-Sentiment Analysis
+### View Velocity
+- Formula: Total Views ÷ Hours Since Published
+- Shows trending momentum
+- Categories:
+  - Viral (10K+/h)
+  - Hot (5–10K/h)
+  - Rising (1–5K/h)
+  - Steady (<1K/h)
 
-Analyzes comment text for sentiment
-Keywords-based classification
-Visual breakdown with charts
-Sample comments with sentiment labels
+### Multi-Region Support
+Available regions:
+🇺🇸 US, 🇬🇧 UK, 🇨🇦 Canada, 🇦🇺 Australia, 🇩🇪 Germany, 🇫🇷 France, 🇯🇵 Japan, 🇰🇷 South Korea, 🇮🇳 India, 🇧🇷 Brazil, 🇲🇽 Mexico, 🇷🇺 Russia
 
-View Velocity
+## 📊 Data Insights
 
-Formula: Total Views ÷ Hours Since Published
-Shows trending momentum
-Categories: Viral (10K+/h), Hot (5-10K/h), Rising (1-5K/h), Steady (<1K/h)
+### Channel Metrics
+- Subscriber growth trends
+- Average views per video
+- Content duration preferences
+- Engagement rate analysis
+- Upload frequency patterns
 
-Multi-Region Support
-Available regions: 🇺🇸 US, 🇬🇧 UK, 🇨🇦 Canada, 🇦🇺 Australia, 🇩🇪 Germany, 🇫🇷 France, 🇯🇵 Japan, 🇰🇷 South Korea, 🇮🇳 India, 🇧🇷 Brazil, 🇲🇽 Mexico, 🇷🇺 Russia
-📊 Data Insights
-Channel Metrics
+### Video Metrics
+- Real-time view velocity
+- Like-to-view ratio
+- Comment engagement
+- Audience sentiment
+- Performance benchmarking
 
-Subscriber growth trends
-Average views per video
-Content duration preferences
-Engagement rate analysis
-Upload frequency patterns
+### Trending Metrics
+- Regional content preferences
+- Viral content characteristics
+- Engagement distribution
+- Category performance
+- Peak performance times
 
-Video Metrics
+## 🔧 Configuration
 
-Real-time view velocity
-Like-to-view ratio
-Comment engagement
-Audience sentiment
-Performance benchmarking
+### Environment Variables
 
-Trending Metrics
-
-Regional content preferences
-Viral content characteristics
-Engagement distribution
-Category performance
-Peak performance times
-
-🔧 Configuration
-Environment Variables
-env# Backend (.env)
+#### Backend (`.env`)
+```
 YOUTUBE_API_KEY=your_api_key
 FLASK_ENV=development
 FLASK_DEBUG=True
 HOST=0.0.0.0
 PORT=5000
+```
 
-# Frontend (.env.local)
+#### Frontend (`.env.local`)
+```
 REACT_APP_API_URL=http://localhost:5000/api
-API Rate Limits
+```
 
-YouTube Data API: 10,000 units/day (free tier)
-Channel request: ~4 units
-Video request: ~4 units
-Trending request: ~100 units
+### API Rate Limits
 
-🚨 Troubleshooting
-Common Issues
-403 Forbidden Error
+- YouTube Data API: 10,000 units/day (free tier)
+- Channel request: ~4 units
+- Video request: ~4 units
+- Trending request: ~100 units
 
-Check API key validity
-Ensure YouTube Data API v3 is enabled
-Verify billing is enabled in Google Cloud
+## 🚨 Troubleshooting
 
-CORS Errors
+### Common Issues
 
-Ensure Flask-CORS is installed
-Check frontend API URL configuration
+#### 403 Forbidden Error
+- Check API key validity
+- Ensure YouTube Data API v3 is enabled
+- Verify billing is enabled in Google Cloud
 
-No Trending Data
+#### CORS Errors
+- Ensure Flask-CORS is installed
+- Check frontend API URL configuration
 
-Try different regions
-Check API quota usage
-Verify API key restrictions
+#### No Trending Data
+- Try different regions
+- Check API quota usage
+- Verify API key restrictions
 
-Channel Not Found
+#### Channel Not Found
+- Try channel ID instead of custom URL
+- Check for typos in URL/ID
+- Some private channels may not be accessible
 
-Try channel ID instead of custom URL
-Check for typos in URL/ID
-Some private channels may not be accessible
+## 📈 Performance
 
-📈 Performance
+- Frontend: Optimized React components with lazy loading
+- Backend: Efficient API calls with caching mechanisms
+- API Usage: Smart quota management
+- Responsive: Works on desktop, tablet, and mobile
 
-Frontend: Optimized React components with lazy loading
-Backend: Efficient API calls with caching mechanisms
-API Usage: Smart quota management
-Responsive: Works on desktop, tablet, and mobile
+## 🤝 Contributing
 
-🤝 Contributing
+1. Fork the repository  
+2. Create feature branch: `git checkout -b feature/AmazingFeature`  
+3. Commit changes: `git commit -m 'Add AmazingFeature'`  
+4. Push to branch: `git push origin feature/AmazingFeature`  
+5. Open a Pull Request
 
-Fork the repository
-Create feature branch (git checkout -b feature/AmazingFeature)
-Commit changes (git commit -m 'Add AmazingFeature')
-Push to branch (git push origin feature/AmazingFeature)
-Open a Pull Request
+## 📄 License
 
-📄 License
-This project is licensed under the MIT License - see the LICENSE file for details.
-🙏 Acknowledgments
+This project is licensed under the MIT License – see the LICENSE file for details.
 
-YouTube Data API v3 for data access
-Recharts for beautiful visualizations
-Tailwind CSS for styling
-Lucide React for icons
+## 🙏 Acknowledgments
+
+- YouTube Data API v3 for data access  
+- Recharts for beautiful visualizations  
+- Tailwind CSS for styling  
+- Lucide React for icons
+
+## 📞 Support
+
+For support and questions:
+- Create an issue on GitHub  
+- Check the YouTube API documentation  
+- Review the troubleshooting section above
+
+---
+
+Built with ❤️ for YouTube content creators and analysts
