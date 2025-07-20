@@ -29,6 +29,44 @@ def not_found(error):
 def internal_error(error):
     return jsonify({'error': 'Internal server error'}), 500
 
+# --- START: Added Base Routes ---
+
+@app.route('/')
+def home():
+    """
+    Returns a simple message for the root URL, guiding to API endpoints.
+    """
+    return jsonify({
+        'message': 'Welcome to the YouTube Analytics API! Access specific endpoints under /api/.',
+        'available_endpoints': [
+            '/api/health',
+            '/api/channel/<channel_input>',
+            '/api/video/<video_id>',
+            '/api/trending',
+            '/api/trending/<region_code>',
+            '/api/test-channel/<channel_input>'
+        ]
+    })
+
+@app.route('/api')
+def api_base():
+    """
+    Returns a greeting and lists available API endpoints at the /api base.
+    """
+    return jsonify({
+        'message': 'You\'ve reached the API base. Here are the available endpoints:',
+        'endpoints': {
+            'health_check': '/api/health',
+            'channel_analytics': '/api/channel/<channel_input>',
+            'video_analytics': '/api/video/<video_id>',
+            'trending_analysis': '/api/trending (or /api/trending/<region_code>)',
+            'test_channel_resolution': '/api/test-channel/<channel_input>'
+        }
+    })
+
+# --- END: Added Base Routes ---
+
+
 def make_youtube_request(endpoint, params):
     """Make a request to YouTube API with error handling"""
     params['key'] = YOUTUBE_API_KEY
