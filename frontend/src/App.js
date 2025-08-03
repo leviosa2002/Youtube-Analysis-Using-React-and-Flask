@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area, ComposedChart } from 'recharts';
-import { Search, TrendingUp, Video, Users, Eye, ThumbsUp, MessageCircle, Clock, Globe, Calendar, Activity, BarChart3, Play, Smile, Frown, Meh, Flag, Award, Zap } from 'lucide-react';
+import { Search, TrendingUp, Video, Users, Eye, ThumbsUp, MessageCircle, Clock, Globe, Calendar, Activity, BarChart3, Play, Smile, Frown, Meh, Flag, Award, Zap, Youtube } from 'lucide-react';
 
 // API Configuration
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -792,167 +792,385 @@ const ChannelAnalysis = ({ channelId, onBack }) => {
 
 // Video Analysis Component
 const VideoAnalysis = ({ videoId, onBack }) => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // State variables for managing data, loading status, and errors
+  const [data, setData] = useState(null); // 'data' will hold the fetched video analysis results
+  const [loading, setLoading] = useState(true); // 'loading' indicates if data is being fetched
+  const [error, setError] = useState(null);   // 'error' stores any error message during fetching
 
+  // Function to fetch video analysis data from the API
   const fetchData = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const result = await api.getVideo(videoId);
-      setData(result);
+      setLoading(true); // Set loading to true to show spinner
+      setError(null);   // Clear any previous errors
+      const result = await api.getVideo(videoId); // Call your API to get video data
+      setData(result);  // Store the fetched data in the 'data' state
     } catch (err) {
-      setError(err.message);
+      setError(err.message); // If an error occurs, set the error message
     } finally {
-      setLoading(false);
+      setLoading(false); // Regardless of success or failure, set loading to false
     }
   };
 
+  // useEffect hook to trigger data fetching when videoId changes
   useEffect(() => {
-    if (videoId) fetchData();
-  }, [videoId]);
+    if (videoId) fetchData(); // Fetch data only if a videoId is provided
+  }, [videoId]); // Dependency array: re-run effect when videoId changes
 
-  if (loading) return <LoadingSpinner />;
-  if (error) return <ErrorMessage message={error} onRetry={fetchData} />;
-  if (!data) return null;
+  // Conditional rendering based on loading, error, or data availability
+  if (loading) return <LoadingSpinner />; // Show a loading spinner if data is being fetched
+  if (error) return <ErrorMessage message={error} onRetry={fetchData} />; // Show error message with a retry option if an error occurs
+  if (!data) return null; // If no data and not loading/error, render nothing (e.g., initial state or invalid videoId)
 
+  // Destructure data for easier access
   const { video, analytics, relatedVideos, commentsAnalysis } = data;
 
-  const engagementData = [
-    { name: 'Views', value: video.viewCount, color: '#3B82F6', percentage: 100 },
+  // Prepare data for the Engagement Breakdown - for direct comparison of Likes/Comments (not views)
+  const engagementComparisonData = [
     { name: 'Likes', value: video.likeCount, color: '#10B981', percentage: (video.likeCount / video.viewCount * 100).toFixed(2) },
     { name: 'Comments', value: video.commentCount, color: '#F59E0B', percentage: (video.commentCount / video.viewCount * 100).toFixed(2) }
   ];
 
+  // Calculate total engagements for the engagement breakdown card (includes views for total)
+  const totalEngagements = video.viewCount + video.likeCount + video.commentCount; // Sum of all engagement actions
+
+
+  // Prepare data for the Performance Metrics section
   const performanceData = [
-    { metric: 'Views/Hour', value: analytics.viewsPerHour, color: '#3B82F6' },
-    { metric: 'Like Rate %', value: analytics.likesToViewsRatio, color: '#10B981' },
-    { metric: 'Comment Rate %', value: analytics.commentsToViewsRatio, color: '#F59E0B' },
-    { metric: 'Engagement %', value: video.engagementRate, color: '#8B5CF6' }
+    { metric: 'Views/Hour', value: analytics.viewsPerHour, color: '#3B82F6', isPercentage: false },
+    { metric: 'Like Rate %', value: analytics.likesToViewsRatio, color: '#10B981', isPercentage: true },
+    { metric: 'Comment Rate %', value: analytics.commentsToViewsRatio, color: '#F59E0B', isPercentage: true },
+    { metric: 'Engagement %', value: video.engagementRate, color: '#8B5CF6', isPercentage: true }
   ];
 
+  // Prepare data for Sentiment Analysis chart (Pie/Bar Chart)
   const sentimentData = commentsAnalysis && commentsAnalysis.sentimentDistribution ? [
     { name: 'Positive', value: commentsAnalysis.sentimentDistribution.positive || 0, color: '#10B981' },
     { name: 'Neutral', value: commentsAnalysis.sentimentDistribution.neutral || 0, color: '#6B7280' },
     { name: 'Negative', value: commentsAnalysis.sentimentDistribution.negative || 0, color: '#EF4444' }
-  ] : [];
+  ] : []; // If commentsAnalysis or sentimentDistribution is missing, set to empty array
 
+  // Calculate overall sentiment insight for the comments analysis card
+  const getSentimentInsight = (sentimentDistribution) => {
+    if (!sentimentDistribution || !commentsAnalysis.totalComments) return "No comment data available.";
+    const { positive, neutral, negative } = sentimentDistribution;
+    const total = commentsAnalysis.totalComments;
+
+    const positivePercent = (positive / total) * 100;
+    const negativePercent = (negative / total) * 100;
+
+    if (positivePercent > 60 && negativePercent < 20) {
+      return "Overall sentiment is strongly positive, indicating high viewer satisfaction.";
+    } else if (negativePercent > 40) {
+      return "Significant negative sentiment detected. Consider reviewing comments for common issues.";
+    } else if (positivePercent > negativePercent) {
+      return "Generally positive feedback, with some mixed reactions.";
+    } else {
+      return "Mixed sentiment observed. A balanced view of the video's reception.";
+    }
+  };
+  const sentimentInsight = getSentimentInsight(commentsAnalysis?.sentimentDistribution);
+
+
+  // Prepare data for Word Cloud (Top Words in Comments)
   const wordCloudData = commentsAnalysis && commentsAnalysis.topWords ? Object.entries(commentsAnalysis.topWords).map(([word, count]) => ({
     text: word,
     value: count,
-    color: `hsl(${Math.random() * 360}, 70%, 60%)`
-  })) : [];
+    color: `hsl(${Math.random() * 360}, 70%, 60%)` // Assign a random HSL color to each word
+  })) : []; // If commentsAnalysis or topWords is missing, set to empty array
 
+  // Construct YouTube video URL
+  const youtubeVideoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+
+  // Start of the main component rendering
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6"> {/* Main container with vertical spacing */}
+      <div className="flex items-center justify-between"> {/* Header with back button and title */}
         <button
-          onClick={onBack}
-          className="flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+          onClick={onBack} // Call onBack prop when button is clicked
+          className="flex items-center text-blue-600 hover:text-blue-800 transition-colors" // Styling for back button
         >
           ← Back to Search
         </button>
-        <h2 className="text-2xl font-bold text-gray-900">Video Analytics</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Video Analytics</h2> {/* Component title */}
       </div>
 
-      {/* Video Header */}
-      <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-lg shadow-md p-6">
-        <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-6">
+      {/* Video Header Section */}
+      <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-lg shadow-md p-6"> {/* Styled background and padding */}
+        <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-6"> {/* Responsive layout for video thumbnail and details */}
           <img
-            src={video.thumbnails.medium.url}
-            alt={video.title}
-            className="w-full md:w-64 h-40 object-cover rounded-lg shadow-lg"
+            src={video.thumbnails.medium.url} // Video thumbnail source
+            alt={video.title} // Alt text for accessibility
+            className="w-full md:w-64 h-40 object-cover rounded-lg shadow-lg" // Image styling
           />
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">{video.title}</h1>
-            <p className="text-gray-600 mb-4">{video.description}</p>
-            <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-              <div className="flex items-center bg-white px-3 py-1 rounded-full">
-                <Users className="h-4 w-4 mr-1" />
+          <div className="flex-1"> {/* Container for video title, description, and metadata */}
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">{video.title}</h1> {/* Video title */}
+            <p className="text-gray-600 mb-4">{video.description}</p> {/* Video description */}
+            <div className="flex flex-wrap gap-4 text-sm text-gray-500"> {/* Container for video metadata tags */}
+              <div className="flex items-center bg-white px-3 py-1 rounded-full"> {/* Channel title tag */}
+                <Users className="h-4 w-4 mr-1" /> {/* Icon for channel */}
                 {video.channelTitle}
               </div>
-              <div className="flex items-center bg-white px-3 py-1 rounded-full">
-                <Calendar className="h-4 w-4 mr-1" />
-                {new Date(video.publishedAt).toLocaleDateString()}
+              <div className="flex items-center bg-white px-3 py-1 rounded-full"> {/* Published date tag */}
+                <Calendar className="h-4 w-4 mr-1" /> {/* Icon for calendar */}
+                {new Date(video.publishedAt).toLocaleDateString()} {/* Formatted published date */}
               </div>
-              <div className="flex items-center bg-white px-3 py-1 rounded-full">
-                <Clock className="h-4 w-4 mr-1" />
-                {formatDuration(video.duration)}
+              <div className="flex items-center bg-white px-3 py-1 rounded-full"> {/* Video duration tag */}
+                <Clock className="h-4 w-4 mr-1" /> {/* Icon for clock */}
+                {formatDuration(video.duration)} {/* Formatted video duration */}
               </div>
+              {/* New: YouTube Video Link */}
+              <a
+                href={youtubeVideoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center bg-red-600 text-white px-3 py-1 rounded-full hover:bg-red-700 transition-colors"
+              >
+                <Youtube className="h-4 w-4 mr-1" />
+                Watch on YouTube
+              </a>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Enhanced Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Enhanced Metrics Section - Grid of Metric Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"> {/* Responsive grid for metric cards */}
         <MetricCard
-          icon={Eye}
+          icon={Eye} // Icon for views
           label="Views"
-          value={video.viewCountFormatted}
-          subtitle={`${video.viewCount.toLocaleString()} total`}
+          value={video.viewCountFormatted} // Formatted view count
+          subtitle={`${video.viewCount.toLocaleString()} total`} // Total raw view count
         />
         <MetricCard
-          icon={ThumbsUp}
+          icon={ThumbsUp} // Icon for likes
           label="Likes"
-          value={video.likeCountFormatted}
-          subtitle={`${analytics.likesToViewsRatio}% rate`}
+          value={video.likeCountFormatted} // Formatted like count
+          subtitle={`${analytics.likesToViewsRatio}% rate`} // Like-to-views ratio
         />
         <MetricCard
-          icon={MessageCircle}
+          icon={MessageCircle} // Icon for comments
           label="Comments"
-          value={video.commentCountFormatted}
-          subtitle={`${analytics.commentsToViewsRatio}% rate`}
+          value={video.commentCountFormatted} // Formatted comment count
+          subtitle={`${analytics.commentsToViewsRatio}% rate`} // Comment-to-views ratio
         />
         <MetricCard
-          icon={Activity}
+          icon={Activity} // Icon for engagement
           label="Engagement"
-          value={`${video.engagementRate}%`}
+          value={`${video.engagementRate}%`} // Engagement rate
           subtitle="Overall rate"
         />
       </div>
 
-      {/* Advanced Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Views vs Performance Analysis */}
-        <div className="bg-white rounded-lg shadow-md p-6 col-span-2">
-          <h3 className="text-lg font-semibold mb-4 flex items-center justify-between">
+      {/* Advanced Charts Grid - Adjusted to 2x2 layout for core charts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> {/* Grid for 2x2 layout */}
+
+        {/* Views vs Performance Analysis Card (now just a list) */}
+        <div className="bg-white rounded-lg shadow-md p-6"> {/* Card styling */}
+          <h3 className="text-lg font-semibold mb-4 flex items-center justify-between"> {/* Section title */}
             <div className="flex items-center">
-              <Activity className="h-5 w-5 mr-2 text-blue-500" />
-              Views vs Performance Analysis
+              <Activity className="h-5 w-5 mr-2 text-blue-500" /> {/* Icon */}
+              Views vs Performance Metrics
             </div>
             <div className="text-sm text-gray-500">
-              Updated {timeAgo(video.publishedAt)}
+              Updated {timeAgo(video.publishedAt)} {/* Time since published */}
             </div>
           </h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left Side - Performance Metrics */}
-            <div>
-              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-3 mb-4">
-                <div className="text-xs text-gray-600">
-                  Compare video performance metrics and engagement rates over time.
-                </div>
+          {/* Left Side - Performance Metrics List */}
+          <div>
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-3 mb-4">
+              <div className="text-xs text-gray-600">
+                Compare video performance metrics and engagement rates.
               </div>
-              <div className="space-y-3">
-                {performanceData.map((metric, index) => (
-                  <div key={index} className="bg-gradient-to-br from-white to-gray-50 rounded-lg p-4 border border-gray-100 hover:shadow-lg transition-all duration-300">
+            </div>
+            <div className="space-y-3"> {/* Vertical spacing for metric items */}
+              {performanceData.map((metric, index) => ( // Map through performance data to display each metric
+                <div key={index} className="bg-gradient-to-br from-white to-gray-50 rounded-lg p-4 border border-gray-100 hover:shadow-lg transition-all duration-300"> {/* Metric card styling */}
+                  <div className="flex items-center justify-between mb-2">
+                    <span
+                      className="text-sm font-medium px-3 py-1 rounded-full"
+                      style={{ backgroundColor: `${metric.color}1A`, color: metric.color }} // Dynamic background and text color using inline style
+                    >
+                      {metric.metric}
+                    </span>
+                    <span className="text-lg font-bold text-gray-700">
+                      {/* Conditional rendering for value formatting: add % if isPercentage is true */}
+                      {typeof metric.value === 'number'
+                        ? `${metric.value.toFixed(1)}${metric.isPercentage ? '%' : ''}` // Format number and add % if it's a percentage
+                        : metric.value} {/* Use raw value if not a number */}
+                    </span>
+                  </div>
+                  <div className="relative pt-1">
+                    <div className="overflow-hidden h-2 text-xs flex rounded bg-gray-100">
+                      <div
+                        className="rounded"
+                        style={{
+                          // For percentage values, clamp to 100%. For raw views, scale relative to the highest view count.
+                          width: `${metric.isPercentage
+                            ? Math.min(metric.value, 100) // For percentages, cap at 100
+                            : (metric.value / Math.max(...performanceData.map(d => d.isPercentage ? 0 : d.value))) * 100 // Scale non-percentages
+                            }%`,
+                          backgroundColor: metric.color // Dynamic bar color
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-4 text-center text-xs"> {/* Summary metrics below list */}
+            <div className="p-2 rounded-lg bg-blue-50">
+              <div className="font-medium text-blue-800">Views/Hour</div>
+              <div className="text-blue-600">{analytics.viewsPerHour} views</div>
+            </div>
+            <div className="p-2 rounded-lg bg-purple-50">
+              <div className="font-medium text-purple-800">Engagement Rate</div>
+              <div className="text-purple-600">{video.engagementRate}%</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Engagement Breakdown - Redesigned for Clarity */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold mb-4 flex items-center">
+            <Activity className="h-5 w-5 mr-2 text-green-500" />
+            Engagement Breakdown
+          </h3>
+          <div className="flex flex-col space-y-4">
+            {/* Main Views Metric - Highlighted */}
+            <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-center">
+              <div className="text-xl font-bold text-blue-800">
+                {video.viewCountFormatted}
+              </div>
+              <div className="text-sm text-blue-600">Total Views</div>
+            </div>
+
+            {/* Bar Chart for Likes & Comments (absolute numbers) */}
+            <ResponsiveContainer width="100%" height={150}> {/* Smaller height for focused chart */}
+              <BarChart data={engagementComparisonData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                <YAxis axisLine={false} tickLine={false} tickFormatter={formatNumber} /> {/* Format Y-axis numbers */}
+                <Tooltip formatter={(value, name) => [formatNumber(value), name]} />
+                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                  {engagementComparisonData.map((entry, index) => (
+                    <Cell key={`bar-cell-${index}`} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+
+            {/* Detailed Engagement Rates */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {engagementComparisonData.map((entry, index) => (
+                <div key={`detail-${index}`} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                  <div className="flex items-center text-sm font-medium mb-1">
+                    <span className="inline-block w-3 h-3 rounded-full mr-2" style={{ backgroundColor: entry.color }}></span>
+                    {entry.name}:
+                  </div>
+                  <div className="text-lg font-bold text-gray-800">
+                    {formatNumber(entry.value)}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {entry.percentage}% of views
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-sm text-gray-600 text-center mt-2">
+              Engagement metrics relative to total views.
+            </p>
+          </div>
+        </div>
+
+        {/* Enhanced Sentiment Analysis - Conditional Rendering */}
+        {commentsAnalysis && sentimentData.length > 0 && ( // Render only if commentsAnalysis exists and there's sentiment data
+          <div className="bg-white rounded-lg shadow-md p-6"> {/* Card styling */}
+            <h3 className="text-lg font-semibold mb-4 flex items-center"> {/* Chart title */}
+              <MessageCircle className="h-5 w-5 mr-2 text-purple-500" /> {/* Icon */}
+              Comments Sentiment Analysis
+            </h3>
+            {/* New: Sentiment Insight */}
+            <div className="mb-4 bg-purple-50 text-purple-800 text-sm p-3 rounded-lg border border-purple-100">
+                <p className="font-medium">Overall Insight:</p>
+                <p>{sentimentInsight}</p>
+            </div>
+            {/* Consolidated Bar Chart */}
+            <ResponsiveContainer width="100%" height={250}> {/* Increased height for single chart */}
+              <BarChart data={sentimentData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}> {/* Bar chart for sentiment */}
+                <CartesianGrid strokeDasharray="3 3" vertical={false} /> {/* Grid lines, only horizontal */}
+                <XAxis dataKey="name" axisLine={false} tickLine={false} /> {/* X-axis data key, simplified */}
+                <YAxis axisLine={false} tickLine={false} tickFormatter={formatNumber} /> {/* Y-axis, simplified */}
+                <Tooltip formatter={(value, name) => [formatNumber(value), name]} /> {/* Tooltip */}
+                <Bar dataKey="value" radius={[4, 4, 0, 0]}> {/* Bar styling */}
+                  {sentimentData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} /> // Dynamic color for each bar
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            {/* New: Sentiment Breakdown Summary */}
+            <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
+                {sentimentData.map((entry, index) => (
+                    <div key={`sentiment-summary-${index}`} className="p-2 rounded-lg" style={{ backgroundColor: `${entry.color}1A`, color: entry.color }}>
+                        <div className="font-bold">{entry.value}</div>
+                        <div>{entry.name}</div>
+                    </div>
+                ))}
+            </div>
+          </div>
+        )} {/* Closing bracket for the conditional rendering of Sentiment Analysis block */}
+
+        {/* Top Words in Comments - Enhanced - Conditional Rendering */}
+        {commentsAnalysis && wordCloudData.length > 0 && ( // Render only if commentsAnalysis exists and there's word cloud data
+          <div className="bg-white rounded-lg shadow-md p-6"> {/* Card styling */}
+            <h3 className="text-lg font-semibold mb-4 flex items-center"> {/* Section title */}
+              <BarChart3 className="h-5 w-5 mr-2 text-indigo-500" /> {/* Icon */}
+              Most Used Words in Comments
+            </h3>
+
+            <div className="space-y-4"> {/* Vertical spacing for content */}
+              {/* Top Words Cards - Grid */}
+              <div className="grid grid-cols-2 gap-4"> {/* Grid for top word cards */}
+                {wordCloudData.slice(0, 6).map((word, index) => ( // Map through top 6 words
+                  <div
+                    key={index}
+                    className="bg-gradient-to-br from-white to-gray-50 rounded-lg p-4 border border-gray-100 hover:shadow-lg transition-all duration-300" // Card styling
+                  >
                     <div className="flex items-center justify-between mb-2">
-                      <span className={`text-sm font-medium px-3 py-1 rounded-full bg-${metric.color.replace('#', '')}-100 text-${metric.color.replace('#', '')}-800`}>
-                        {metric.metric}
+                      <span
+                        className={`text-sm font-medium px-2 py-1 rounded-full ${
+                          index === 0 ? 'bg-indigo-100 text-indigo-800' :
+                          index === 1 ? 'bg-purple-100 text-purple-800' :
+                          'bg-blue-100 text-blue-800'
+                        }`} // Conditional styling for ranking
+                      >
+                        #{index + 1}
                       </span>
-                      <span className="text-lg font-bold text-gray-700">
-                        {typeof metric.value === 'number' ? metric.value.toFixed(1) : metric.value}
+                      <span className="text-xs text-gray-500">
+                        {word.value} occurrences
                       </span>
                     </div>
+                    <div className="text-lg font-medium text-gray-800 mb-2">
+                      {word.text} {/* The word itself */}
+                    </div>
                     <div className="relative pt-1">
+                      <div className="flex mb-2 items-center justify-between">
+                        <div>
+                          <span className="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-indigo-600 bg-indigo-50">
+                            Frequency
+                          </span>
+                        </div>
+                      </div>
                       <div className="overflow-hidden h-2 text-xs flex rounded bg-gray-100">
                         <div
-                          className="rounded"
-                          style={{ 
-                            width: `${Math.min((metric.value / Math.max(...performanceData.map(d => d.value))) * 100, 100)}%`,
-                            backgroundColor: metric.color
+                          style={{
+                            width: `${(word.value / wordCloudData[0].value) * 100}%`, // Calculate width based on proportion to most frequent word
+                            backgroundColor: word.color // Dynamic bar color
                           }}
+                          className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center rounded" // Bar styling
                         ></div>
                       </div>
                     </div>
@@ -960,217 +1178,80 @@ const VideoAnalysis = ({ videoId, onBack }) => {
                 ))}
               </div>
             </div>
-
-            {/* Right Side - Performance Distribution */}
-            <div>
-              <ResponsiveContainer width="100%" height={400}>
-                <ComposedChart data={performanceData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis 
-                    dataKey="metric"
-                    tick={{ fontSize: 11 }}
-                    interval={0}
-                    angle={-45}
-                    textAnchor="end"
-                    height={60}
-                  />
-                  <YAxis 
-                    yAxisId="left"
-                    orientation="left"
-                    tick={{ fontSize: 11 }}
-                    label={{ value: 'Value', angle: -90, position: 'insideLeft' }}
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(255, 255, 255, 0.95)', 
-                      borderRadius: '8px', 
-                      padding: '12px',
-                      border: '1px solid #E5E7EB'
-                    }}
-                  />
-                  <Bar 
-                    yAxisId="left"
-                    dataKey="value" 
-                    fill="#8B5CF6"
-                    radius={[4, 4, 0, 0]}
-                    opacity={0.8}
-                  >
-                    {performanceData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </ComposedChart>
-              </ResponsiveContainer>
-
-              <div className="mt-4 grid grid-cols-2 gap-4 text-center text-xs">
-                <div className="p-2 rounded-lg bg-blue-50">
-                  <div className="font-medium text-blue-800">Views/Hour</div>
-                  <div className="text-blue-600">{analytics.viewsPerHour} views</div>
-                </div>
-                <div className="p-2 rounded-lg bg-purple-50">
-                  <div className="font-medium text-purple-800">Engagement Rate</div>
-                  <div className="text-purple-600">{video.engagementRate}%</div>
-                </div>
-              </div>
-            </div>
           </div>
-        </div>
+        )} {/* Closing bracket for the conditional rendering of Top Words block */}
+      </div> {/* Closing div for Advanced Charts Grid */}
 
-        {/* Engagement Breakdown - Enhanced Donut Chart */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <Activity className="h-5 w-5 mr-2 text-green-500" />
-            Engagement Breakdown
-          </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={engagementData}
-                cx="50%"
-                cy="50%"
-                innerRadius={40}
-                outerRadius={90}
-                fill="#8884d8"
-                dataKey="value"
-                label={({ name, percentage }) => `${name} ${percentage}%`}
-              >
-                {engagementData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value, name) => [formatNumber(value), name]} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Enhanced Sentiment Analysis */}
-        {commentsAnalysis && sentimentData.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <MessageCircle className="h-5 w-5 mr-2 text-purple-500" />
-              Comments Sentiment Analysis
-            </h3>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <ResponsiveContainer width="100%" height={150}>
-                <PieChart>
-                  <Pie
-                    data={sentimentData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={60}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {sentimentData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-              <ResponsiveContainer width="100%" height={150}>
-                <BarChart data={sentimentData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="value" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )};
-
-        {/* Top Words in Comments - Enhanced */}
-        {commentsAnalysis && wordCloudData.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold mb-4 flex items-center">
-              <BarChart3 className="h-5 w-5 mr-2 text-indigo-500" />
-              Most Used Words in Comments
-            </h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={wordCloudData.slice(0, 8)} layout="horizontal">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis type="category" dataKey="text" width={80} />
-                <Tooltip />
-                <Bar dataKey="value" fill="#6366F1" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </div>
-
-      {/* Enhanced Comments Insights */}
-      {commentsAnalysis && commentsAnalysis.sentimentDistribution && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <Activity className="h-5 w-5 mr-2 text-blue-500" />
+      {/* Enhanced Comments Insights - Conditional Rendering */}
+      {commentsAnalysis && commentsAnalysis.sentimentDistribution && ( // Render only if commentsAnalysis and sentimentDistribution exist
+        <div className="bg-white rounded-lg shadow-md p-6"> {/* Card styling */}
+          <h3 className="text-lg font-semibold mb-4 flex items-center"> {/* Section title */}
+            <Activity className="h-5 w-5 mr-2 text-blue-500" /> {/* Icon */}
             Comments Insights Dashboard
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-lg">
-              <Smile className="h-10 w-10 text-green-600 mx-auto mb-3" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6"> {/* Grid for sentiment summary cards */}
+            <div className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-lg"> {/* Positive comments card */}
+              <Smile className="h-10 w-10 text-green-600 mx-auto mb-3" /> {/* Icon */}
               <div className="text-3xl font-bold text-green-600">
-                {commentsAnalysis.sentimentDistribution.positive || 0}
+                {commentsAnalysis.sentimentDistribution.positive || 0} {/* Positive comment count */}
               </div>
               <div className="text-sm text-green-700 font-medium">Positive Comments</div>
               <div className="text-xs text-green-600 mt-1">
-                {commentsAnalysis.totalComments > 0 ? 
-                  `${((commentsAnalysis.sentimentDistribution.positive / commentsAnalysis.totalComments) * 100).toFixed(1)}%` : '0%'
+                {commentsAnalysis.totalComments > 0 ?
+                  `${((commentsAnalysis.sentimentDistribution.positive / commentsAnalysis.totalComments) * 100).toFixed(1)}%` : '0%' // Percentage of positive comments
                 }
               </div>
             </div>
-            <div className="text-center p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg">
-              <Meh className="h-10 w-10 text-gray-600 mx-auto mb-3" />
+            <div className="text-center p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg"> {/* Neutral comments card */}
+              <Meh className="h-10 w-10 text-gray-600 mx-auto mb-3" /> {/* Icon */}
               <div className="text-3xl font-bold text-gray-600">
-                {commentsAnalysis.sentimentDistribution.neutral || 0}
+                {commentsAnalysis.sentimentDistribution.neutral || 0} {/* Neutral comment count */}
               </div>
               <div className="text-sm text-gray-700 font-medium">Neutral Comments</div>
               <div className="text-xs text-gray-600 mt-1">
-                {commentsAnalysis.totalComments > 0 ? 
-                  `${((commentsAnalysis.sentimentDistribution.neutral / commentsAnalysis.totalComments) * 100).toFixed(1)}%` : '0%'
+                {commentsAnalysis.totalComments > 0 ?
+                  `${((commentsAnalysis.sentimentDistribution.neutral / commentsAnalysis.totalComments) * 100).toFixed(1)}%` : '0%' // Percentage of neutral comments
                 }
               </div>
             </div>
-            <div className="text-center p-6 bg-gradient-to-br from-red-50 to-red-100 rounded-lg">
-              <Frown className="h-10 w-10 text-red-600 mx-auto mb-3" />
+            <div className="text-center p-6 bg-gradient-to-br from-red-50 to-red-100 rounded-lg"> {/* Negative comments card */}
+              <Frown className="h-10 w-10 text-red-600 mx-auto mb-3" /> {/* Icon */}
               <div className="text-3xl font-bold text-red-600">
-                {commentsAnalysis.sentimentDistribution.negative || 0}
+                {commentsAnalysis.sentimentDistribution.negative || 0} {/* Negative comment count */}
               </div>
               <div className="text-sm text-red-700 font-medium">Negative Comments</div>
               <div className="text-xs text-red-600 mt-1">
-                {commentsAnalysis.totalComments > 0 ? 
-                  `${((commentsAnalysis.sentimentDistribution.negative / commentsAnalysis.totalComments) * 100).toFixed(1)}%` : '0%'
+                {commentsAnalysis.totalComments > 0 ?
+                  `${((commentsAnalysis.sentimentDistribution.negative / commentsAnalysis.totalComments) * 100).toFixed(1)}%` : '0%' // Percentage of negative comments
                 }
               </div>
             </div>
           </div>
-          
-          {commentsAnalysis.comments && commentsAnalysis.comments.length > 0 && (
+
+          {/* Recent Comments Sample - Conditional Rendering */}
+          {commentsAnalysis.comments && commentsAnalysis.comments.length > 0 && ( // Render only if comments exist
             <div>
-              <h4 className="font-semibold mb-3 flex items-center">
-                <MessageCircle className="h-4 w-4 mr-2" />
+              <h4 className="font-semibold mb-3 flex items-center"> {/* Sub-section title */}
+                <MessageCircle className="h-4 w-4 mr-2" /> {/* Icon */}
                 Recent Comments Sample:
               </h4>
-              <div className="space-y-3 max-h-80 overflow-y-auto">
-                {commentsAnalysis.comments.slice(0, 6).map((comment, index) => (
-                  <div key={index} className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+              <div className="space-y-3 max-h-80 overflow-y-auto"> {/* Scrollable container for comments */}
+                {commentsAnalysis.comments.slice(0, 6).map((comment, index) => ( // Map through recent 6 comments
+                  <div key={index} className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"> {/* Comment card styling */}
                     <div className="flex items-center justify-between mb-2">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                         comment.sentiment === 'positive' ? 'bg-green-100 text-green-800' :
                         comment.sentiment === 'negative' ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-800'
-                      }`}>
-                        {comment.sentiment.toUpperCase()}
+                      }`}> {/* Sentiment tag styling */}
+                        {comment.sentiment.toUpperCase()} {/* Display sentiment */}
                       </span>
                       <span className="text-xs text-gray-500 flex items-center">
-                        <ThumbsUp className="h-3 w-3 mr-1" />
-                        {comment.likeCount || 0}
+                        <ThumbsUp className="h-3 w-3 mr-1" /> {/* Like icon */}
+                        {comment.likeCount || 0} {/* Like count */}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-700 leading-relaxed">{comment.text}</p>
+                    <p className="text-sm text-gray-700 leading-relaxed">{comment.text}</p> {/* Comment text */}
                   </div>
                 ))}
               </div>
@@ -1179,28 +1260,28 @@ const VideoAnalysis = ({ videoId, onBack }) => {
         </div>
       )}
 
-      {/* Related Videos */}
-      {relatedVideos && relatedVideos.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <Video className="h-5 w-5 mr-2 text-red-500" />
+      {/* Related Videos Section - Conditional Rendering */}
+      {relatedVideos && relatedVideos.length > 0 && ( // Render only if relatedVideos exist
+        <div className="bg-white rounded-lg shadow-md p-6"> {/* Card styling */}
+          <h3 className="text-lg font-semibold mb-4 flex items-center"> {/* Section title */}
+            <Video className="h-5 w-5 mr-2 text-red-500" /> {/* Icon */}
             Related Videos from Channel
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {relatedVideos.map((video) => (
-              <div key={video.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6"> {/* Responsive grid for related videos */}
+            {relatedVideos.map((video) => ( // Map through related videos
+              <div key={video.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow"> {/* Related video card styling */}
                 <img
-                  src={video.thumbnail}
-                  alt={video.title}
-                  className="w-full h-32 object-cover rounded mb-3"
+                  src={video.thumbnail} // Thumbnail source
+                  alt={video.title} // Alt text
+                  className="w-full h-32 object-cover rounded mb-3" // Image styling
                 />
-                <h4 className="font-medium text-sm line-clamp-2 text-gray-800">{video.title}</h4>
+                <h4 className="font-medium text-sm line-clamp-2 text-gray-800">{video.title}</h4> {/* Video title */}
               </div>
             ))}
           </div>
         </div>
       )}
-    </div>
+    </div> // Closing div for main container
   );
 };
 
@@ -1211,10 +1292,10 @@ const TrendingAnalysis = ({ onBack }) => {
   const [error, setError] = useState(null);
   const [sortBy, setSortBy] = useState('viewVelocity');
   const [sortOrder, setSortOrder] = useState('desc');
-  const [selectedRegion, setSelectedRegion] = useState('US');
+  const [selectedRegion, setSelectedRegion] = useState('IN');
 
   const regions = [
-    { code: 'US', name: '🇺🇸 United States', flag: '🇺🇸' },
+    { code: 'IN', name: '🇮🇳 India', flag: '🇮🇳' },
     { code: 'GB', name: '🇬🇧 United Kingdom', flag: '🇬🇧' },
     { code: 'CA', name: '🇨🇦 Canada', flag: '🇨🇦' },
     { code: 'AU', name: '🇦🇺 Australia', flag: '🇦🇺' },
@@ -1222,7 +1303,7 @@ const TrendingAnalysis = ({ onBack }) => {
     { code: 'FR', name: '🇫🇷 France', flag: '🇫🇷' },
     { code: 'JP', name: '🇯🇵 Japan', flag: '🇯🇵' },
     { code: 'KR', name: '🇰🇷 South Korea', flag: '🇰🇷' },
-    { code: 'IN', name: '🇮🇳 India', flag: '🇮🇳' },
+    { code: 'US', name: '🇺🇸 United States', flag: '🇺🇸' },
     { code: 'BR', name: '🇧🇷 Brazil', flag: '🇧🇷' },
     { code: 'MX', name: '🇲🇽 Mexico', flag: '🇲🇽' },
     { code: 'RU', name: '🇷🇺 Russia', flag: '🇷🇺' }
@@ -1275,7 +1356,7 @@ const TrendingAnalysis = ({ onBack }) => {
 <EnhancedViewVelocityChart 
   trendingVideos={sortedVideos} 
   velocityAnalysis={data.velocityAnalysis} 
-/>   
+/>  
   const viewVelocityData = sortedVideos.slice(0, 10).map((video, index) => ({
     name: `${index + 1}. ${video.title.substring(0, 20)}...`,
     velocity: video.viewVelocity,
@@ -1477,14 +1558,10 @@ const TrendingAnalysis = ({ onBack }) => {
                     </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-4 gap-3 mb-3">
+                <div className="grid grid-cols-3 gap-3 mb-3">
                   <div className="text-center p-2 bg-red-50 rounded">
                     <div className="text-xs font-medium text-red-600">{formatNumber(video.viewVelocity)}</div>
                     <div className="text-xs text-red-500">views/hour</div>
-                  </div>
-                  <div className="text-center p-2 bg-orange-50 rounded">
-                    <div className="text-xs font-medium text-orange-600">{formatNumber(video.dailyVelocity)}</div>
-                    <div className="text-xs text-orange-500">views/day</div>
                   </div>
                   <div className="text-center p-2 bg-blue-50 rounded">
                     <div className="text-xs font-medium text-blue-600">{video.velocityScore}/100</div>
@@ -1504,8 +1581,8 @@ const TrendingAnalysis = ({ onBack }) => {
                         style={{ 
                           width: `${(video.viewVelocity / sortedVideos[0].viewVelocity * 100)}%`,
                           backgroundColor: video.velocityCategory === 'Viral' ? '#EF4444' :
-                                         video.velocityCategory === 'Hot' ? '#F97316' :
-                                         video.velocityCategory === 'Rising' ? '#EAB308' : '#6B7280'
+                                           video.velocityCategory === 'Hot' ? '#F97316' :
+                                           video.velocityCategory === 'Rising' ? '#EAB308' : '#6B7280'
                         }}
                       ></div>
                     </div>
@@ -1514,21 +1591,7 @@ const TrendingAnalysis = ({ onBack }) => {
                       <span>{Math.round(video.viewVelocity / sortedVideos[0].viewVelocity * 100)}% of #1</span>
                     </div>
                   </div>
-                  <div className="relative pt-1">
-                    <div className="text-xs text-gray-500 mb-1">Time Online</div>
-                    <div className="overflow-hidden h-2 text-xs flex rounded bg-gray-100">
-                      <div
-                        className="rounded bg-green-500"
-                        style={{ 
-                          width: `${Math.min((video.hoursOld / 72) * 100, 100)}%`
-                        }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between text-xs text-gray-500 mt-1">
-                      <span>{video.hoursOld} hours</span>
-                      <span>{Math.round(video.hoursOld / 72 * 100)}% of 72h</span>
-                    </div>
-                  </div>
+                  
                 </div>
               </div>
             ))}
@@ -1607,6 +1670,7 @@ const TrendingAnalysis = ({ onBack }) => {
                 <th className="px-4 py-3 text-right font-semibold text-gray-700">Velocity</th>
                 <th className="px-4 py-3 text-right font-semibold text-gray-700">Duration</th>
                 <th className="px-4 py-3 text-right font-semibold text-gray-700">Engagement</th>
+                <th className="px-4 py-3 text-right font-semibold text-gray-700">Watch</th>
               </tr>
             </thead>
             <tbody>
@@ -1666,6 +1730,17 @@ const TrendingAnalysis = ({ onBack }) => {
                         {engagementRate}%
                       </span>
                     </td>
+                    <td className="px-4 py-4 text-right">
+                      <a 
+                        href={`https://www.youtube.com/watch?v=${video.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-red-600 hover:text-red-700 transition-colors"
+                        title="Watch on YouTube"
+                      >
+                        <Video className="h-4 w-4" />
+                      </a>
+                    </td>
                   </tr>
                 );
               })}
@@ -1716,7 +1791,6 @@ const TrendingAnalysis = ({ onBack }) => {
     </div>
   );
 };
-
 // Main App Component
 const YouTubeAnalyticsApp = () => {
   const [activeView, setActiveView] = useState('search');
