@@ -170,16 +170,20 @@ const MetricCard = ({ icon: Icon, label, value, subtitle, color = "blue", trend 
 
 // Enhanced View Velocity Chart Component
 const EnhancedViewVelocityChart = ({ trendingVideos, velocityAnalysis }) => {
-  // Prepare enhanced chart data
-  const velocityData = trendingVideos.slice(0, 15).map((video, index) => ({
+  // Prepare enhanced chart data with more detailed metrics
+  const velocityData = trendingVideos.slice(0, 10).map((video, index) => ({
     rank: index + 1,
-    title: video.title.substring(0, 25) + '...',
+    title: video.title.substring(0, 40) + '...',
     velocity: video.viewVelocity,
     dailyVelocity: video.dailyVelocity,
     category: video.velocityCategory,
     hoursOld: video.hoursOld,
     views: video.viewCount / 1000000,
     velocityScore: video.velocityScore,
+    id: video.id,
+    channelTitle: video.channelTitle,
+    publishedAt: video.publishedAt,
+    engagement: ((video.likeCount + video.commentCount) / video.viewCount * 100).toFixed(1),
     color: video.velocityCategory === 'Viral' ? '#EF4444' :
            video.velocityCategory === 'Hot' ? '#F97316' :
            video.velocityCategory === 'Rising' ? '#EAB308' : '#6B7280'
@@ -197,42 +201,117 @@ const EnhancedViewVelocityChart = ({ trendingVideos, velocityAnalysis }) => {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Enhanced Velocity Comparison */}
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold mb-4 flex items-center">
-          <Zap className="h-5 w-5 mr-2 text-yellow-500" />
-          View Velocity Analysis (Views/Hour)
+        <h3 className="text-lg font-semibold mb-4 flex items-center justify-between">
+          <div className="flex items-center">
+            <Zap className="h-5 w-5 mr-2 text-yellow-500" />
+            View Velocity Analysis (Top 10)
+          </div>
+          <div className="text-sm text-gray-500">
+            Updated {timeAgo(new Date())}
+          </div>
         </h3>
-        <ResponsiveContainer width="100%" height={400}>
-          <BarChart data={velocityData} layout="horizontal">
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis type="number" />
-            <YAxis 
-              type="category" 
-              dataKey="title" 
-              width={140} 
-              tick={{ fontSize: 10 }}
-            />
-            <Tooltip 
-              formatter={(value, name) => [
-                name === 'velocity' ? `${value.toFixed(0)} views/hour` :
-                name === 'dailyVelocity' ? `${value.toFixed(0)} views/day` :
-                name === 'velocityScore' ? `${value}/100 score` :
-                `${value.toFixed(1)}M views`,
-                name === 'velocity' ? 'Hourly Velocity' :
-                name === 'dailyVelocity' ? 'Daily Projection' :
-                name === 'velocityScore' ? 'Velocity Score' : 'Total Views'
-              ]}
-              labelFormatter={(label) => `${label} (${velocityData.find(d => d.title === label)?.category})`}
-            />
-            <Bar 
-              dataKey="velocity" 
-              fill={(entry) => entry.color}
-              radius={[0, 4, 4, 0]}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-        <div className="mt-4 text-sm text-gray-600">
-          <p><strong>View Velocity</strong> = Total Views ÷ Hours Since Published</p>
-          <p>Shows how fast videos are gaining views in real-time</p>
+        <div className="space-y-4">
+          {velocityData.map((video, index) => (
+            <div key={index} className="bg-gradient-to-r from-gray-50 to-white p-4 rounded-lg border border-gray-100 hover:shadow-lg transition-all duration-300">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center space-x-3">
+                  <span className={`text-sm font-medium px-3 py-1 rounded-full ${
+                    index === 0 ? 'bg-red-100 text-red-800' :
+                    index === 1 ? 'bg-orange-100 text-orange-800' :
+                    index === 2 ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    #{index + 1}
+                  </span>
+                  <span className={`text-xs px-3 py-1 rounded-full ${
+                    video.category === 'Viral' ? 'bg-red-100 text-red-800' :
+                    video.category === 'Hot' ? 'bg-orange-100 text-orange-800' :
+                    video.category === 'Rising' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {video.category}
+                  </span>
+                  <span className={`text-xs px-3 py-1 rounded-full bg-purple-100 text-purple-800`}>
+                    {video.engagement}% engagement
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs text-gray-500">{timeAgo(video.publishedAt)}</span>
+                  <a 
+                    href={`https://youtube.com/watch?v=${video.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-red-600 hover:text-red-700 transition-colors"
+                    title="Watch on YouTube"
+                  >
+                    <Video className="h-4 w-4" />
+                  </a>
+                </div>
+              </div>
+              <div className="flex items-start space-x-4 mb-3">
+                <div className="flex-grow">
+                  <div className="text-sm font-medium text-gray-800 mb-1 line-clamp-2" title={video.title}>
+                    {video.title}
+                  </div>
+                  <div className="text-xs text-gray-500 flex items-center">
+                    <Users className="h-3 w-3 mr-1" />
+                    {video.channelTitle}
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-3 mb-3">
+                <div className="text-center p-2 bg-red-50 rounded">
+                  <div className="text-xs font-medium text-red-600">{formatNumber(video.velocity)}</div>
+                  <div className="text-xs text-red-500">views/hour</div>
+                </div>
+                <div className="text-center p-2 bg-orange-50 rounded">
+                  <div className="text-xs font-medium text-orange-600">{formatNumber(video.dailyVelocity)}</div>
+                  <div className="text-xs text-orange-500">views/day</div>
+                </div>
+                <div className="text-center p-2 bg-blue-50 rounded">
+                  <div className="text-xs font-medium text-blue-600">{video.velocityScore}/100</div>
+                  <div className="text-xs text-blue-500">velocity score</div>
+                </div>
+                <div className="text-center p-2 bg-purple-50 rounded">
+                  <div className="text-xs font-medium text-purple-600">{formatNumber(video.views)}M</div>
+                  <div className="text-xs text-purple-500">total views</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="relative pt-1">
+                  <div className="text-xs text-gray-500 mb-1">Velocity Rank</div>
+                  <div className="overflow-hidden h-2 text-xs flex rounded bg-gray-100">
+                    <div
+                      className="rounded"
+                      style={{ 
+                        width: `${(video.velocity / velocityData[0].velocity * 100)}%`,
+                        backgroundColor: video.color
+                      }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>{formatNumber(video.velocity)} views/hour</span>
+                    <span>{Math.round(video.velocity / velocityData[0].velocity * 100)}% of #1</span>
+                  </div>
+                </div>
+                <div className="relative pt-1">
+                  <div className="text-xs text-gray-500 mb-1">Time Online</div>
+                  <div className="overflow-hidden h-2 text-xs flex rounded bg-gray-100">
+                    <div
+                      className="rounded bg-green-500"
+                      style={{ 
+                        width: `${Math.min((video.hoursOld / 72) * 100, 100)}%`
+                      }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>{video.hoursOld} hours</span>
+                    <span>{Math.round(video.hoursOld / 72 * 100)}% of 72h</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -836,21 +915,105 @@ const VideoAnalysis = ({ videoId, onBack }) => {
 
       {/* Advanced Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Performance Metrics - Enhanced Bar Chart */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <BarChart3 className="h-5 w-5 mr-2 text-blue-500" />
-            Performance Metrics
+        {/* Views vs Performance Analysis */}
+        <div className="bg-white rounded-lg shadow-md p-6 col-span-2">
+          <h3 className="text-lg font-semibold mb-4 flex items-center justify-between">
+            <div className="flex items-center">
+              <Activity className="h-5 w-5 mr-2 text-blue-500" />
+              Views vs Performance Analysis
+            </div>
+            <div className="text-sm text-gray-500">
+              Updated {timeAgo(video.publishedAt)}
+            </div>
           </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={performanceData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="metric" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="value" fill="#3B82F6" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Side - Performance Metrics */}
+            <div>
+              <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-3 mb-4">
+                <div className="text-xs text-gray-600">
+                  Compare video performance metrics and engagement rates over time.
+                </div>
+              </div>
+              <div className="space-y-3">
+                {performanceData.map((metric, index) => (
+                  <div key={index} className="bg-gradient-to-br from-white to-gray-50 rounded-lg p-4 border border-gray-100 hover:shadow-lg transition-all duration-300">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-sm font-medium px-3 py-1 rounded-full bg-${metric.color.replace('#', '')}-100 text-${metric.color.replace('#', '')}-800`}>
+                        {metric.metric}
+                      </span>
+                      <span className="text-lg font-bold text-gray-700">
+                        {typeof metric.value === 'number' ? metric.value.toFixed(1) : metric.value}
+                      </span>
+                    </div>
+                    <div className="relative pt-1">
+                      <div className="overflow-hidden h-2 text-xs flex rounded bg-gray-100">
+                        <div
+                          className="rounded"
+                          style={{ 
+                            width: `${Math.min((metric.value / Math.max(...performanceData.map(d => d.value))) * 100, 100)}%`,
+                            backgroundColor: metric.color
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right Side - Performance Distribution */}
+            <div>
+              <ResponsiveContainer width="100%" height={400}>
+                <ComposedChart data={performanceData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis 
+                    dataKey="metric"
+                    tick={{ fontSize: 11 }}
+                    interval={0}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis 
+                    yAxisId="left"
+                    orientation="left"
+                    tick={{ fontSize: 11 }}
+                    label={{ value: 'Value', angle: -90, position: 'insideLeft' }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'rgba(255, 255, 255, 0.95)', 
+                      borderRadius: '8px', 
+                      padding: '12px',
+                      border: '1px solid #E5E7EB'
+                    }}
+                  />
+                  <Bar 
+                    yAxisId="left"
+                    dataKey="value" 
+                    fill="#8B5CF6"
+                    radius={[4, 4, 0, 0]}
+                    opacity={0.8}
+                  >
+                    {performanceData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </ComposedChart>
+              </ResponsiveContainer>
+
+              <div className="mt-4 grid grid-cols-2 gap-4 text-center text-xs">
+                <div className="p-2 rounded-lg bg-blue-50">
+                  <div className="font-medium text-blue-800">Views/Hour</div>
+                  <div className="text-blue-600">{analytics.viewsPerHour} views</div>
+                </div>
+                <div className="p-2 rounded-lg bg-purple-50">
+                  <div className="font-medium text-purple-800">Engagement Rate</div>
+                  <div className="text-purple-600">{video.engagementRate}%</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Engagement Breakdown - Enhanced Donut Chart */}
@@ -1254,30 +1417,126 @@ const TrendingAnalysis = ({ onBack }) => {
           </div>
         )}
 
-        {/* View Velocity Comparison */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center">
-            <Zap className="h-5 w-5 mr-2 text-purple-500" />
-            View Velocity Comparison (Top 10)
+        {/* View Velocity Analysis */}
+        <div className="bg-white rounded-lg shadow-md p-6 col-span-2">
+          <h3 className="text-lg font-semibold mb-4 flex items-center justify-between">
+            <div className="flex items-center">
+              <Zap className="h-5 w-5 mr-2 text-yellow-500" />
+              View Velocity Analysis (Top 10)
+            </div>
+            <div className="text-sm text-gray-500">
+              Updated {timeAgo(new Date())}
+            </div>
           </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={viewVelocityData} layout="horizontal">
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" />
-              <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 10 }} />
-              <Tooltip 
-                formatter={(value, name) => [
-                  name === 'velocity' ? `${value.toFixed(0)} views/hour` : 
-                  name === 'views' ? `${value.toFixed(1)}M views` :
-                  `${value}%`,
-                  name === 'velocity' ? 'View Velocity' : 
-                  name === 'views' ? 'Total Views (M)' : 'Engagement %'
-                ]}
-              />
-              <Bar dataKey="velocity" fill="#8B5CF6" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="space-y-4">
+            {sortedVideos.slice(0, 10).map((video, index) => (
+              <div key={index} className="bg-gradient-to-r from-gray-50 to-white p-4 rounded-lg border border-gray-100 hover:shadow-lg transition-all duration-300">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center space-x-3">
+                    <span className={`text-sm font-medium px-3 py-1 rounded-full ${
+                      index === 0 ? 'bg-red-100 text-red-800' :
+                      index === 1 ? 'bg-orange-100 text-orange-800' :
+                      index === 2 ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      #{index + 1}
+                    </span>
+                    <span className={`text-xs px-3 py-1 rounded-full ${
+                      video.velocityCategory === 'Viral' ? 'bg-red-100 text-red-800' :
+                      video.velocityCategory === 'Hot' ? 'bg-orange-100 text-orange-800' :
+                      video.velocityCategory === 'Rising' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {video.velocityCategory}
+                    </span>
+                    <span className="text-xs px-3 py-1 rounded-full bg-purple-100 text-purple-800">
+                      {((video.likeCount + video.commentCount) / video.viewCount * 100).toFixed(1)}% engagement
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-gray-500">{timeAgo(video.publishedAt)}</span>
+                    <a 
+                      href={`https://youtube.com/watch?v=${video.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-red-600 hover:text-red-700 transition-colors"
+                      title="Watch on YouTube"
+                    >
+                      <Video className="h-4 w-4" />
+                    </a>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-4 mb-3">
+                  <div className="flex-grow">
+                    <div className="text-sm font-medium text-gray-800 mb-1 line-clamp-2" title={video.title}>
+                      {video.title}
+                    </div>
+                    <div className="text-xs text-gray-500 flex items-center">
+                      <Users className="h-3 w-3 mr-1" />
+                      {video.channelTitle}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 gap-3 mb-3">
+                  <div className="text-center p-2 bg-red-50 rounded">
+                    <div className="text-xs font-medium text-red-600">{formatNumber(video.viewVelocity)}</div>
+                    <div className="text-xs text-red-500">views/hour</div>
+                  </div>
+                  <div className="text-center p-2 bg-orange-50 rounded">
+                    <div className="text-xs font-medium text-orange-600">{formatNumber(video.dailyVelocity)}</div>
+                    <div className="text-xs text-orange-500">views/day</div>
+                  </div>
+                  <div className="text-center p-2 bg-blue-50 rounded">
+                    <div className="text-xs font-medium text-blue-600">{video.velocityScore}/100</div>
+                    <div className="text-xs text-blue-500">velocity score</div>
+                  </div>
+                  <div className="text-center p-2 bg-purple-50 rounded">
+                    <div className="text-xs font-medium text-purple-600">{formatNumber(video.viewCount / 1000000)}M</div>
+                    <div className="text-xs text-purple-500">total views</div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="relative pt-1">
+                    <div className="text-xs text-gray-500 mb-1">Velocity Rank</div>
+                    <div className="overflow-hidden h-2 text-xs flex rounded bg-gray-100">
+                      <div
+                        className="rounded"
+                        style={{ 
+                          width: `${(video.viewVelocity / sortedVideos[0].viewVelocity * 100)}%`,
+                          backgroundColor: video.velocityCategory === 'Viral' ? '#EF4444' :
+                                         video.velocityCategory === 'Hot' ? '#F97316' :
+                                         video.velocityCategory === 'Rising' ? '#EAB308' : '#6B7280'
+                        }}
+                      ></div>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>{formatNumber(video.viewVelocity)} views/hour</span>
+                      <span>{Math.round(video.viewVelocity / sortedVideos[0].viewVelocity * 100)}% of #1</span>
+                    </div>
+                  </div>
+                  <div className="relative pt-1">
+                    <div className="text-xs text-gray-500 mb-1">Time Online</div>
+                    <div className="overflow-hidden h-2 text-xs flex rounded bg-gray-100">
+                      <div
+                        className="rounded bg-green-500"
+                        style={{ 
+                          width: `${Math.min((video.hoursOld / 72) * 100, 100)}%`
+                        }}
+                      ></div>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>{video.hoursOld} hours</span>
+                      <span>{Math.round(video.hoursOld / 72 * 100)}% of 72h</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
+
+
+
 
         {/* Category Performance Area Chart */}
         <div className="bg-white rounded-lg shadow-md p-6">
